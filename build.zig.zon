@@ -1,0 +1,24 @@
+.{
+    .name = .zevm_stateless_zisk,
+    .version = "0.0.0",
+    .minimum_zig_version = "0.15.1",
+    .fingerprint = 0x86261620eb934151,
+
+    .dependencies = .{
+        // zevm — EVM implementation in Zig (crypto libs disabled for freestanding)
+        .zevm = .{
+            .path = "../zevm",
+        },
+        // zevm-stateless — stateless EVM guest program (source files only)
+        .zevm_stateless = .{
+            .path = "../zevm-stateless",
+        },
+    },
+
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "zisk.ld",
+    },
+}
