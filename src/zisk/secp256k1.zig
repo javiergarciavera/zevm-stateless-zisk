@@ -127,6 +127,18 @@ fn feIsZero(a: *const Fe) bool {
     return std.mem.eql(u8, a, &ZERO);
 }
 
+/// Numeric less-than for LE 256-bit integers: returns true if a < b.
+/// Compares from the most-significant byte (index 31) downward.
+fn feNumericLessThan(a: *const Fe, b: *const Fe) bool {
+    var i: usize = 32;
+    while (i > 0) {
+        i -= 1;
+        if (a[i] < b[i]) return true;
+        if (a[i] > b[i]) return false;
+    }
+    return false; // equal
+}
+
 /// Additive inverse: (m − a) mod m.
 /// Uses byte-level subtraction; valid for a ∈ [0, m−1].
 fn feNeg(a: *const Fe, m: *const Fe) Fe {
@@ -277,9 +289,10 @@ fn doEcrecover(msg_hash: [32]u8, sig: [64]u8, recid: u8) ?[20]u8 {
     if (recid & 2 != 0) {
         // x = r + n; only valid if r + n < p (extremely rare on secp256k1)
         rx = feAdd(&r_le, &N_LE, &P_LE);
-        // Verify that rx didn't wrap (i.e., r + n < p); if it did, feAdd mod p
-        // gave a value < r, meaning the overflow case is invalid for this recid.
-        if (std.mem.lessThan(u8, &rx, &r_le)) return null;
+        // Verify that rx didn't wrap (i.e., r + n < p).  feAdd computes mod p, so
+        // a wrap means rx < r numerically.  Compare from the most-significant byte
+        // (index 31) first, since the representation is little-endian.
+        if (feNumericLessThan(&rx, &r_le)) return null;
     }
 
     // y² = x³ + 7 mod p
@@ -304,9 +317,10 @@ fn doEcrecover(msg_hash: [32]u8, sig: [64]u8, recid: u8) ?[20]u8 {
     const k2 = feMul(&s_le, &r_inv, &N_LE);
 
     // Q = k1·G + k2·R
-    const u1G = scalarMul(&k1, G) orelse return null;
-    const u2R = scalarMul(&k2, R) orelse return null;
-    const Q = optAdd(u1G, u2R) orelse return null;
+    // Pass ?Point directly into optAdd so that a zero scalar (k1 or k2 == 0,
+    // meaning that term is the point at infinity) is handled correctly rather
+    // than rejected.  Only a Q that is itself infinity (degenerate key) is null.
+    const Q = optAdd(scalarMul(&k1, G), scalarMul(&k2, R)) orelse return null;
 
     // Ethereum address = keccak256(Qx_BE ‖ Qy_BE)[12..32]
     var pubkey: [64]u8 = undefined;
