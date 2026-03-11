@@ -2,12 +2,11 @@
 ///
 /// Implements Option 2 (Direct Buffer Interface) from the zkvm-standards spec.
 /// Input and output are memory-mapped regions in the Zisk address space.
-
 const std = @import("std");
 
 /// Zisk zkVM memory regions
-const ZISK_INPUT_BASE:  usize = 0x90000000;
-const ZISK_INPUT_SIZE:  usize = 0x08000000; // 128MB
+const ZISK_INPUT_BASE: usize = 0x90000000;
+const ZISK_INPUT_SIZE: usize = 0x08000000; // 128MB
 const ZISK_OUTPUT_BASE: usize = 0xa0010000;
 const ZISK_OUTPUT_SIZE: usize = 0x00010000; // 64KB
 
@@ -27,12 +26,12 @@ pub fn read_input(buf_ptr: *[*]const u8, buf_size: *usize) void {
     const input_size = std.mem.littleToNative(u64, size_ptr.*);
 
     if (input_size == 0 or input_size > ZISK_INPUT_SIZE - 16) {
-        buf_ptr.*  = @ptrFromInt(ZISK_INPUT_BASE);
+        buf_ptr.* = @ptrFromInt(ZISK_INPUT_BASE);
         buf_size.* = 0;
         return;
     }
 
-    buf_ptr.*  = @ptrFromInt(ZISK_INPUT_BASE + 16);
+    buf_ptr.* = @ptrFromInt(ZISK_INPUT_BASE + 16);
     buf_size.* = input_size;
 }
 

@@ -1,8 +1,8 @@
-const std        = @import("std");
-const zisk       = @import("zisk");
+const std = @import("std");
+const zisk = @import("zisk");
 const deserialize = @import("deserialize");
-const executor   = @import("executor");
-const zkvm_io    = @import("zkvm_io.zig");
+const executor = @import("executor");
+const zkvm_io = @import("zkvm_io.zig");
 
 /// Zisk zkVM UART address for console output
 const ZISK_UART: *volatile u8 = @ptrFromInt(0xa0000200);
@@ -41,9 +41,8 @@ fn zkExit(exit_code: u32) noreturn {
         \\ .align 4
         :
         : [exit_code] "{a0}" (exit_code),
-          [syscall]   "{a7}" (93)
-        : .{ .memory = true }
-    );
+          [syscall] "{a7}" (93),
+        : .{ .memory = true });
     while (true) {
         asm volatile ("wfi");
     }
@@ -95,6 +94,9 @@ pub fn main() !void {
 
     // Write ProofOutput to zkVM output region
     // Format: pre_state_root (32) | post_state_root (32) | receipts_root (32)
+    std.log.info("pre-state: 0x{x} ", .{&output.pre_state_root});
+    std.log.info("post-state: 0x{x} ", .{&output.post_state_root});
+    std.log.info("receipts: 0x{x} ", .{&output.receipts_root});
     zkvm_io.write_output_slice(&output.pre_state_root);
     zkvm_io.write_output_slice(&output.post_state_root);
     zkvm_io.write_output_slice(&output.receipts_root);

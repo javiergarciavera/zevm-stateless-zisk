@@ -41,16 +41,27 @@ pub const ZiskAllocator = struct {
     }
 
     fn resize(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, new_len: usize, ret_addr: usize) bool {
-        _ = ctx; _ = buf; _ = buf_align; _ = new_len; _ = ret_addr;
+        _ = ctx;
+        _ = buf;
+        _ = buf_align;
+        _ = new_len;
+        _ = ret_addr;
         return false;
     }
 
     fn free(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, ret_addr: usize) void {
-        _ = ctx; _ = buf; _ = buf_align; _ = ret_addr;
+        _ = ctx;
+        _ = buf;
+        _ = buf_align;
+        _ = ret_addr;
     }
 
     fn remap(ctx: *anyopaque, old_buf: []u8, buf_align: std.mem.Alignment, new_len: usize, ret_addr: usize) ?[*]u8 {
-        _ = ctx; _ = old_buf; _ = buf_align; _ = new_len; _ = ret_addr;
+        _ = ctx;
+        _ = old_buf;
+        _ = buf_align;
+        _ = new_len;
+        _ = ret_addr;
         return null;
     }
 
@@ -58,10 +69,10 @@ pub const ZiskAllocator = struct {
         return .{
             .ptr = self,
             .vtable = &.{
-                .alloc  = alloc,
+                .alloc = alloc,
                 .resize = resize,
-                .free   = free,
-                .remap  = remap,
+                .free = free,
+                .remap = remap,
             },
         };
     }
@@ -103,16 +114,27 @@ pub const BumpAllocator = struct {
     }
 
     fn resize(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, new_len: usize, ret_addr: usize) bool {
-        _ = ctx; _ = buf; _ = buf_align; _ = new_len; _ = ret_addr;
+        _ = ctx;
+        _ = buf;
+        _ = buf_align;
+        _ = new_len;
+        _ = ret_addr;
         return false;
     }
 
     fn free(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, ret_addr: usize) void {
-        _ = ctx; _ = buf; _ = buf_align; _ = ret_addr;
+        _ = ctx;
+        _ = buf;
+        _ = buf_align;
+        _ = ret_addr;
     }
 
     fn remap(ctx: *anyopaque, old_buf: []u8, buf_align: std.mem.Alignment, new_len: usize, ret_addr: usize) ?[*]u8 {
-        _ = ctx; _ = old_buf; _ = buf_align; _ = new_len; _ = ret_addr;
+        _ = ctx;
+        _ = old_buf;
+        _ = buf_align;
+        _ = new_len;
+        _ = ret_addr;
         return null;
     }
 
@@ -120,10 +142,10 @@ pub const BumpAllocator = struct {
         return .{
             .ptr = self,
             .vtable = &.{
-                .alloc  = alloc,
+                .alloc = alloc,
                 .resize = resize,
-                .free   = free,
-                .remap  = remap,
+                .free = free,
+                .remap = remap,
             },
         };
     }
@@ -156,7 +178,7 @@ pub const ArenaAllocator = struct {
 pub fn FixedBufferAllocator(comptime size: usize) type {
     return struct {
         buffer: [size]u8,
-        bump:   BumpAllocator,
+        bump: BumpAllocator,
 
         const Self = @This();
 

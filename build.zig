@@ -30,15 +30,15 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const primitives  = zevm_dep.module("primitives");
-    const bytecode    = zevm_dep.module("bytecode");
-    const state       = zevm_dep.module("state");
-    const database    = zevm_dep.module("database");
-    const context     = zevm_dep.module("context");
+    const primitives = zevm_dep.module("primitives");
+    const bytecode = zevm_dep.module("bytecode");
+    const state = zevm_dep.module("state");
+    const database = zevm_dep.module("database");
+    const context = zevm_dep.module("context");
     const interpreter = zevm_dep.module("interpreter");
-    const precompile  = zevm_dep.module("precompile");
-    const handler     = zevm_dep.module("handler");
-    const inspector   = zevm_dep.module("inspector");
+    const precompile = zevm_dep.module("precompile");
+    const handler = zevm_dep.module("handler");
+    const inspector = zevm_dep.module("inspector");
 
     // Attach freestanding-compatible build options to precompile
     precompile.addImport("build_options", lib_options_module);
@@ -73,8 +73,8 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    mpt_mod.addImport("primitives",  primitives);
-    mpt_mod.addImport("input",       input_mod);
+    mpt_mod.addImport("primitives", primitives);
+    mpt_mod.addImport("input", input_mod);
     mpt_mod.addImport("mpt_nibbles", mpt_nibbles_mod);
     // keccak_impl wired below, after zisk_mod is defined
 
@@ -177,9 +177,9 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    rlp_decode_mod.addImport("input",      input_mod);
+    rlp_decode_mod.addImport("input", input_mod);
     rlp_decode_mod.addImport("primitives", primitives);
-    rlp_decode_mod.addImport("mpt",        mpt_mod);
+    rlp_decode_mod.addImport("mpt", mpt_mod);
 
     const executor_tx_decode_mod = b.createModule(.{
         .root_source_file = zs_dep.path("src/executor/tx_decode.zig"),
@@ -187,45 +187,46 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     executor_tx_decode_mod.addImport("executor_types", executor_types_mod);
-    executor_tx_decode_mod.addImport("input",          input_mod);
-    executor_tx_decode_mod.addImport("rlp_decode",     rlp_decode_mod);
+    executor_tx_decode_mod.addImport("input", input_mod);
+    executor_tx_decode_mod.addImport("rlp_decode", rlp_decode_mod);
 
-    // secp256k1_wrapper — freestanding stub (returns null; hardware impl pending)
-    const secp256k1_stub_mod = b.createModule(.{
-        .root_source_file = b.path("src/zisk/secp256k1_stub.zig"),
+    // secp256k1 — hardware-accelerated ecrecover via Zisk CSR circuits
+    const secp256k1_mod = b.createModule(.{
+        .root_source_file = b.path("src/zisk/secp256k1.zig"),
         .target = target,
         .optimize = optimize,
     });
+    secp256k1_mod.addImport("zisk", zisk_mod);
 
     const executor_output_mod = b.createModule(.{
         .root_source_file = zs_dep.path("src/executor/output.zig"),
         .target = target,
         .optimize = optimize,
     });
-    executor_output_mod.addImport("executor_types",      executor_types_mod);
+    executor_output_mod.addImport("executor_types", executor_types_mod);
     executor_output_mod.addImport("executor_rlp_encode", executor_rlp_encode_mod);
-    executor_output_mod.addImport("mpt_builder",         mpt_builder_mod);
-    executor_output_mod.addImport("mpt",                 mpt_mod);
+    executor_output_mod.addImport("mpt_builder", mpt_builder_mod);
+    executor_output_mod.addImport("mpt", mpt_mod);
 
     const executor_transition_mod = b.createModule(.{
         .root_source_file = zs_dep.path("src/executor/transition.zig"),
         .target = target,
         .optimize = optimize,
     });
-    executor_transition_mod.addImport("executor_types",      executor_types_mod);
+    executor_transition_mod.addImport("executor_types", executor_types_mod);
     executor_transition_mod.addImport("executor_rlp_encode", executor_rlp_encode_mod);
-    executor_transition_mod.addImport("executor_output",     executor_output_mod);
-    executor_transition_mod.addImport("primitives",          primitives);
-    executor_transition_mod.addImport("state",               state);
-    executor_transition_mod.addImport("bytecode",            bytecode);
-    executor_transition_mod.addImport("database",            database);
-    executor_transition_mod.addImport("context",             context);
-    executor_transition_mod.addImport("handler",             handler);
-    executor_transition_mod.addImport("precompile",          precompile);
-    executor_transition_mod.addImport("secp256k1_wrapper",   secp256k1_stub_mod);
+    executor_transition_mod.addImport("executor_output", executor_output_mod);
+    executor_transition_mod.addImport("primitives", primitives);
+    executor_transition_mod.addImport("state", state);
+    executor_transition_mod.addImport("bytecode", bytecode);
+    executor_transition_mod.addImport("database", database);
+    executor_transition_mod.addImport("context", context);
+    executor_transition_mod.addImport("handler", handler);
+    executor_transition_mod.addImport("precompile", precompile);
+    executor_transition_mod.addImport("secp256k1_wrapper", secp256k1_mod);
     // executor_allocator — inject the Zisk bump allocator so transition.zig
     // uses it instead of std.heap.c_allocator (unavailable in freestanding).
-    executor_transition_mod.addImport("executor_allocator",  zisk_allocator_module);
+    executor_transition_mod.addImport("executor_allocator", zisk_allocator_module);
 
     // Executor module — the zevm-stateless three-phase execution pipeline.
     // Re-created here (rather than using zs_dep.module()) so it picks up the
@@ -236,16 +237,16 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    executor_mod.addImport("primitives",          primitives);
-    executor_mod.addImport("context",             context);
-    executor_mod.addImport("mpt",                 mpt_mod);
-    executor_mod.addImport("input",               input_mod);
-    executor_mod.addImport("output",              output_mod);
-    executor_mod.addImport("executor_types",      executor_types_mod);
-    executor_mod.addImport("executor_output",     executor_output_mod);
+    executor_mod.addImport("primitives", primitives);
+    executor_mod.addImport("context", context);
+    executor_mod.addImport("mpt", mpt_mod);
+    executor_mod.addImport("input", input_mod);
+    executor_mod.addImport("output", output_mod);
+    executor_mod.addImport("executor_types", executor_types_mod);
+    executor_mod.addImport("executor_output", executor_output_mod);
     executor_mod.addImport("executor_transition", executor_transition_mod);
-    executor_mod.addImport("executor_fork",       executor_fork_mod);
-    executor_mod.addImport("executor_tx_decode",  executor_tx_decode_mod);
+    executor_mod.addImport("executor_fork", executor_fork_mod);
+    executor_mod.addImport("executor_tx_decode", executor_tx_decode_mod);
 
     // Local deserializer module — adapted from zevm-stateless's deserialize.zig
     // but works from a byte slice instead of stdin (freestanding-compatible).
@@ -256,9 +257,9 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    deserialize_mod.addImport("input",      input_mod);
+    deserialize_mod.addImport("input", input_mod);
     deserialize_mod.addImport("primitives", primitives);
-    deserialize_mod.addImport("mpt",        mpt_mod);
+    deserialize_mod.addImport("mpt", mpt_mod);
     deserialize_mod.addImport("rlp_decode", rlp_decode_mod);
 
     // Main Zisk guest executable
@@ -275,23 +276,26 @@ pub fn build(b: *std.Build) void {
     exe.setLinkerScript(b.path("zisk.ld"));
     exe.root_module.code_model = .medium;
 
-    exe.root_module.addImport("zisk",        zisk_mod);
-    exe.root_module.addImport("primitives",  primitives);
-    exe.root_module.addImport("bytecode",    bytecode);
-    exe.root_module.addImport("state",       state);
-    exe.root_module.addImport("database",    database);
-    exe.root_module.addImport("context",     context);
+    exe.root_module.addImport("zisk", zisk_mod);
+    exe.root_module.addImport("primitives", primitives);
+    exe.root_module.addImport("bytecode", bytecode);
+    exe.root_module.addImport("state", state);
+    exe.root_module.addImport("database", database);
+    exe.root_module.addImport("context", context);
     exe.root_module.addImport("interpreter", interpreter);
-    exe.root_module.addImport("precompile",  precompile);
-    exe.root_module.addImport("handler",     handler);
-    exe.root_module.addImport("inspector",   inspector);
-    exe.root_module.addImport("input",       input_mod);
-    exe.root_module.addImport("output",      output_mod);
-    exe.root_module.addImport("mpt",         mpt_mod);
+    exe.root_module.addImport("precompile", precompile);
+    exe.root_module.addImport("handler", handler);
+    exe.root_module.addImport("inspector", inspector);
+    exe.root_module.addImport("input", input_mod);
+    exe.root_module.addImport("output", output_mod);
+    exe.root_module.addImport("mpt", mpt_mod);
     exe.root_module.addImport("deserialize", deserialize_mod);
-    exe.root_module.addImport("executor",    executor_mod);
+    exe.root_module.addImport("executor", executor_mod);
 
     b.installArtifact(exe);
+
+    // Test step — wire unit tests in here as they are added.
+    _ = b.step("test", "Run unit tests");
 
     // Run step via ziskemu
     // Usage: zig build run  (requires ziskemu in PATH)

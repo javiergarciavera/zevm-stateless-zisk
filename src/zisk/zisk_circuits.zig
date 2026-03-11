@@ -23,28 +23,27 @@
 ///   0x80F  bls12_381_fsub  — BLS12-381 Fp2 subtraction
 ///   0x810  bls12_381_fmul  — BLS12-381 Fp2 multiplication
 ///   0x811  add256          — 256-bit addition
-
 const std = @import("std");
 
 pub const CircuitCSR = enum(u16) {
-    keccakf            = 0x800,
-    arith256           = 0x801,
-    arith256_mod       = 0x802,
-    secp256k1_add      = 0x803,
-    secp256k1_dbl      = 0x804,
-    sha256f            = 0x805,
-    bn254_curve_add    = 0x806,
-    bn254_curve_dbl    = 0x807,
-    bn254_complex_add  = 0x808,
-    bn254_complex_sub  = 0x809,
-    bn254_complex_mul  = 0x80A,
-    arith384_mod       = 0x80B,
-    bls12_381_curve_add    = 0x80C,
-    bls12_381_curve_dbl    = 0x80D,
-    bls12_381_complex_add  = 0x80E,
-    bls12_381_complex_sub  = 0x80F,
-    bls12_381_complex_mul  = 0x810,
-    add256             = 0x811,
+    keccakf = 0x800,
+    arith256 = 0x801,
+    arith256_mod = 0x802,
+    secp256k1_add = 0x803,
+    secp256k1_dbl = 0x804,
+    sha256f = 0x805,
+    bn254_curve_add = 0x806,
+    bn254_curve_dbl = 0x807,
+    bn254_complex_add = 0x808,
+    bn254_complex_sub = 0x809,
+    bn254_complex_mul = 0x80A,
+    arith384_mod = 0x80B,
+    bls12_381_curve_add = 0x80C,
+    bls12_381_curve_dbl = 0x80D,
+    bls12_381_complex_add = 0x80E,
+    bls12_381_complex_sub = 0x80F,
+    bls12_381_complex_mul = 0x810,
+    add256 = 0x811,
 };
 
 // ── Basic cryptographic operations ───────────────────────────────────────────
@@ -52,27 +51,44 @@ pub const CircuitCSR = enum(u16) {
 /// Keccak-f[1600] permutation — 200-byte state, in-place
 pub fn keccakf(state: *[200]u8) void {
     const ptr = @intFromPtr(state);
-    asm volatile ("csrs 0x800, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    asm volatile ("csrs 0x800, %[ptr]"
+        :
+        : [ptr] "r" (ptr),
+        : .{ .memory = true });
 }
 
 /// SHA-256 compression — 96 bytes (64-byte block + 32-byte state), in-place
 pub fn sha256Compress(block_and_state: *[96]u8) void {
     const ptr = @intFromPtr(block_and_state);
-    asm volatile ("csrs 0x805, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    asm volatile ("csrs 0x805, %[ptr]"
+        :
+        : [ptr] "r" (ptr),
+        : .{ .memory = true });
 }
 
 // ── Secp256k1 operations ──────────────────────────────────────────────────────
 
 /// Secp256k1 point addition — 128 bytes (P1: 64, P2: 64), result in first 64
+/// CSR 0x803 uses indirect_params=2: expects a pointer to [*P1, *P2] struct;
+/// the circuit writes the result back to *P1.
 pub fn secp256k1Add(points: *[128]u8) void {
-    const ptr = @intFromPtr(points);
-    asm volatile ("csrs 0x803, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    const p1: *Point256 = @ptrCast(@alignCast(points[0..64]));
+    const p2: *Point256 = @ptrCast(@alignCast(points[64..128]));
+    var params = Bn254CurveAddParams{ .p1 = p1, .p2 = p2 };
+    const ptr = @intFromPtr(&params);
+    asm volatile ("csrs 0x803, %[ptr]"
+        :
+        : [ptr] "r" (ptr),
+        : .{ .memory = true });
 }
 
 /// Secp256k1 point doubling — 64-byte point, in-place
 pub fn secp256k1Double(point: *[64]u8) void {
     const ptr = @intFromPtr(point);
-    asm volatile ("csrs 0x804, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    asm volatile ("csrs 0x804, %[ptr]"
+        :
+        : [ptr] "r" (ptr),
+        : .{ .memory = true });
 }
 
 // ── BN254 operations ──────────────────────────────────────────────────────────
@@ -102,14 +118,20 @@ pub fn bn254CurveAdd(points: *[128]u8) void {
     const p2: *Point256 = @ptrCast(@alignCast(points[64..128]));
     var params = Bn254CurveAddParams{ .p1 = p1, .p2 = p2 };
     const ptr = @intFromPtr(&params);
-    asm volatile ("csrs 0x806, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    asm volatile ("csrs 0x806, %[ptr]"
+        :
+        : [ptr] "r" (ptr),
+        : .{ .memory = true });
 }
 
 /// BN254 G1 point doubling — 64-byte point, in-place
 pub fn bn254CurveDouble(point: *[64]u8) void {
     const p: *Point256 = @ptrCast(@alignCast(point));
     const ptr = @intFromPtr(p);
-    asm volatile ("csrs 0x807, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    asm volatile ("csrs 0x807, %[ptr]"
+        :
+        : [ptr] "r" (ptr),
+        : .{ .memory = true });
 }
 
 /// BN254 Fp2 addition — 128 bytes, result in first 64
@@ -118,7 +140,10 @@ pub fn bn254ComplexAdd(elements: *[128]u8) void {
     const e2: *Fp2Element = @ptrCast(@alignCast(elements[64..128]));
     var params = Bn254Fp2BinaryOpParams{ .e1 = e1, .e2 = e2 };
     const ptr = @intFromPtr(&params);
-    asm volatile ("csrs 0x808, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    asm volatile ("csrs 0x808, %[ptr]"
+        :
+        : [ptr] "r" (ptr),
+        : .{ .memory = true });
 }
 
 /// BN254 Fp2 subtraction — 128 bytes, result in first 64
@@ -127,7 +152,10 @@ pub fn bn254ComplexSub(elements: *[128]u8) void {
     const e2: *Fp2Element = @ptrCast(@alignCast(elements[64..128]));
     var params = Bn254Fp2BinaryOpParams{ .e1 = e1, .e2 = e2 };
     const ptr = @intFromPtr(&params);
-    asm volatile ("csrs 0x809, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    asm volatile ("csrs 0x809, %[ptr]"
+        :
+        : [ptr] "r" (ptr),
+        : .{ .memory = true });
 }
 
 /// BN254 Fp2 multiplication — 128 bytes, result in first 64
@@ -136,7 +164,10 @@ pub fn bn254ComplexMul(elements: *[128]u8) void {
     const e2: *Fp2Element = @ptrCast(@alignCast(elements[64..128]));
     var params = Bn254Fp2BinaryOpParams{ .e1 = e1, .e2 = e2 };
     const ptr = @intFromPtr(&params);
-    asm volatile ("csrs 0x80A, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    asm volatile ("csrs 0x80A, %[ptr]"
+        :
+        : [ptr] "r" (ptr),
+        : .{ .memory = true });
 }
 
 /// BN254 pairing check (software implementation using Fp2 circuits)
@@ -151,9 +182,9 @@ pub fn bn254PairingCheck(pairs_data: []const u8, allocator: std.mem.Allocator) !
 
     for (0..num_pairs) |i| {
         const off = i * 192;
-        @memcpy(&pairs[i].p.data,   pairs_data[off..][0..64]);
-        @memcpy(&pairs[i].q.x.data, pairs_data[off + 64..][0..64]);
-        @memcpy(&pairs[i].q.y.data, pairs_data[off + 128..][0..64]);
+        @memcpy(&pairs[i].p.data, pairs_data[off..][0..64]);
+        @memcpy(&pairs[i].q.x.data, pairs_data[off + 64 ..][0..64]);
+        @memcpy(&pairs[i].q.y.data, pairs_data[off + 128 ..][0..64]);
     }
     return pairing_impl.pairingCheck(pairs);
 }
@@ -163,31 +194,46 @@ pub fn bn254PairingCheck(pairs_data: []const u8, allocator: std.mem.Allocator) !
 /// BLS12-381 G1 point addition — 192 bytes (P1: 96, P2: 96), result in first 96
 pub fn bls12_381CurveAdd(points: *[192]u8) void {
     const ptr = @intFromPtr(points);
-    asm volatile ("csrs 0x80C, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    asm volatile ("csrs 0x80C, %[ptr]"
+        :
+        : [ptr] "r" (ptr),
+        : .{ .memory = true });
 }
 
 /// BLS12-381 G1 point doubling — 96-byte point, in-place
 pub fn bls12_381CurveDouble(point: *[96]u8) void {
     const ptr = @intFromPtr(point);
-    asm volatile ("csrs 0x80D, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    asm volatile ("csrs 0x80D, %[ptr]"
+        :
+        : [ptr] "r" (ptr),
+        : .{ .memory = true });
 }
 
 /// BLS12-381 Fp2 addition — 192 bytes, result in first 96
 pub fn bls12_381ComplexAdd(elements: *[192]u8) void {
     const ptr = @intFromPtr(elements);
-    asm volatile ("csrs 0x80E, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    asm volatile ("csrs 0x80E, %[ptr]"
+        :
+        : [ptr] "r" (ptr),
+        : .{ .memory = true });
 }
 
 /// BLS12-381 Fp2 subtraction — 192 bytes, result in first 96
 pub fn bls12_381ComplexSub(elements: *[192]u8) void {
     const ptr = @intFromPtr(elements);
-    asm volatile ("csrs 0x80F, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    asm volatile ("csrs 0x80F, %[ptr]"
+        :
+        : [ptr] "r" (ptr),
+        : .{ .memory = true });
 }
 
 /// BLS12-381 Fp2 multiplication — 192 bytes, result in first 96
 pub fn bls12_381ComplexMul(elements: *[192]u8) void {
     const ptr = @intFromPtr(elements);
-    asm volatile ("csrs 0x810, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    asm volatile ("csrs 0x810, %[ptr]"
+        :
+        : [ptr] "r" (ptr),
+        : .{ .memory = true });
 }
 
 // ── Arithmetic operations ─────────────────────────────────────────────────────
@@ -195,23 +241,47 @@ pub fn bls12_381ComplexMul(elements: *[192]u8) void {
 /// 256-bit multiply-add: result = (a*b + c) mod 2^256 — 96 bytes, result in first 32
 pub fn arith256(input: *[96]u8) void {
     const ptr = @intFromPtr(input);
-    asm volatile ("csrs 0x801, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    asm volatile ("csrs 0x801, %[ptr]"
+        :
+        : [ptr] "r" (ptr),
+        : .{ .memory = true });
 }
 
-/// 256-bit modular multiply-add: result = (a*b + c) mod m — 128 bytes, result in first 32
+/// 256-bit modular multiply-add: result = (a*b + c) mod m — 128 bytes, result in first 32.
+/// Buffer layout (caller): [a(32)|b(32)|c(32)|m(32)]; result written back to first 32 bytes.
+/// CSR 0x802 uses indirect_params=5: expects a pointer to [*a, *b, *c, *m, *out];
+/// each sub-pointer addresses 32 bytes (4 u64 limbs); rewrite_params=false so result
+/// goes to *out (a separate buffer), which we copy back to input[0..32].
 pub fn arith256Mod(input: *[128]u8) void {
-    const ptr = @intFromPtr(input);
-    asm volatile ("csrs 0x802, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    var out: [32]u8 align(8) = undefined;
+    var ptrs: [5]u64 align(8) = .{
+        @intFromPtr(&input[0]),
+        @intFromPtr(&input[32]),
+        @intFromPtr(&input[64]),
+        @intFromPtr(&input[96]),
+        @intFromPtr(&out),
+    };
+    asm volatile ("csrs 0x802, %[ptr]"
+        :
+        : [ptr] "r" (@intFromPtr(&ptrs)),
+        : .{ .memory = true });
+    @memcpy(input[0..32], &out);
 }
 
 /// 384-bit modular operations — 192 bytes, result in first 48
 pub fn arith384Mod(input: *[192]u8) void {
     const ptr = @intFromPtr(input);
-    asm volatile ("csrs 0x80B, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    asm volatile ("csrs 0x80B, %[ptr]"
+        :
+        : [ptr] "r" (ptr),
+        : .{ .memory = true });
 }
 
 /// 256-bit addition: result = a + b — 64 bytes, result in first 32
 pub fn add256(input: *[64]u8) void {
     const ptr = @intFromPtr(input);
-    asm volatile ("csrs 0x811, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    asm volatile ("csrs 0x811, %[ptr]"
+        :
+        : [ptr] "r" (ptr),
+        : .{ .memory = true });
 }
