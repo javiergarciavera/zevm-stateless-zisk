@@ -1,14 +1,31 @@
-const std      = @import("std");
-const zisk     = @import("zisk");
-const execute  = @import("execute.zig");
-const zkvm_io  = @import("zkvm_io.zig");
+const std        = @import("std");
+const zisk       = @import("zisk");
+const deserialize = @import("deserialize");
+const executor   = @import("executor");
+const zkvm_io    = @import("zkvm_io.zig");
 
 /// Zisk zkVM UART address for console output
 const ZISK_UART: *volatile u8 = @ptrFromInt(0xa0000200);
 
-// Linker-provided symbols
-extern const __bss_start: u8;
-extern const __bss_end:   u8;
+/// Route all std.log calls through UART.
+/// Any module in the graph that calls std.log.err / .warn / .info / .debug
+/// will produce UART output automatically — no per-module plumbing needed.
+pub const std_options: std.Options = .{ .logFn = logFn };
+
+fn logFn(
+    comptime level: std.log.Level,
+    comptime scope: @TypeOf(.EnumLiteral),
+    comptime format: []const u8,
+    args: anytype,
+) void {
+    _ = scope;
+    uartWrite(level.asText());
+    uartWrite(": ");
+    var buf: [512]u8 = undefined;
+    const msg = std.fmt.bufPrint(&buf, format, args) catch format;
+    uartWrite(msg);
+    uartWrite("\n");
+}
 
 /// Write bytes to the Zisk zkVM UART
 pub fn uartWrite(bytes: []const u8) void {
@@ -52,16 +69,12 @@ comptime {
 
 /// First Zig function executed after sp/gp are set by _start
 export fn _start_main() noreturn {
-    uartWrite("INIT\n");
-
     main() catch |err| {
-        uartWrite("ERROR: ");
-        uartWrite(@errorName(err));
-        uartWrite("\n");
+        std.log.err("fatal: {s}", .{@errorName(err)});
         zkExit(1);
     };
 
-    uartWrite("DONE\n");
+    std.log.info("ok", .{});
     zkExit(0);
 }
 
@@ -72,13 +85,13 @@ pub fn main() !void {
 
     const input_data = zkvm_io.read_input_slice();
 
-    if (input_data.len == 0) {
-        uartWrite("ERROR: no input data in zkVM input region\n");
-        return error.NoInput;
-    }
+    std.log.info("input_len={d}", .{input_data.len});
+    if (input_data.len == 0) return error.NoInput;
 
-    uartWrite("Running zevm-stateless block execution...\n");
-    const output = try execute.executeBlock(allocator, input_data);
+    const si = try deserialize.fromBytes(allocator, input_data);
+    std.log.info("block={d} txns={d}", .{ si.block.number, si.transactions.len });
+
+    const output = try executor.executeBlock(allocator, si, null);
 
     // Write ProofOutput to zkVM output region
     // Format: pre_state_root (32) | post_state_root (32) | receipts_root (32)
