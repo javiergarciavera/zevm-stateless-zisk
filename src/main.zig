@@ -92,12 +92,16 @@ pub fn main() !void {
     std.log.info("block={d} txns={d}", .{ si.block.number, si.transactions.len });
 
     const output = try executor.executeBlock(allocator, si, null);
-
+    
     // Write ProofOutput to zkVM output region
     // Format: pre_state_root (32) | post_state_root (32) | receipts_root (32)
+    std.log.info("pre-state: 0x{x} ",.{&output.pre_state_root});
+    std.log.info("post-state: 0x{x} ",.{&output.post_state_root});
+    std.log.info("receipts: 0x{x} ",.{&output.receipts_root});
     zkvm_io.write_output_slice(&output.pre_state_root);
     zkvm_io.write_output_slice(&output.post_state_root);
     zkvm_io.write_output_slice(&output.receipts_root);
+
 }
 
 /// Panic handler for freestanding Zisk zkVM target

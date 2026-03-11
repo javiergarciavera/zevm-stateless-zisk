@@ -64,8 +64,13 @@ pub fn sha256Compress(block_and_state: *[96]u8) void {
 // ── Secp256k1 operations ──────────────────────────────────────────────────────
 
 /// Secp256k1 point addition — 128 bytes (P1: 64, P2: 64), result in first 64
+/// CSR 0x803 uses indirect_params=2: expects a pointer to [*P1, *P2] struct;
+/// the circuit writes the result back to *P1.
 pub fn secp256k1Add(points: *[128]u8) void {
-    const ptr = @intFromPtr(points);
+    const p1: *Point256 = @ptrCast(@alignCast(points[0..64]));
+    const p2: *Point256 = @ptrCast(@alignCast(points[64..128]));
+    var params = Bn254CurveAddParams{ .p1 = p1, .p2 = p2 };
+    const ptr = @intFromPtr(&params);
     asm volatile ("csrs 0x803, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
 }
 
@@ -198,10 +203,22 @@ pub fn arith256(input: *[96]u8) void {
     asm volatile ("csrs 0x801, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
 }
 
-/// 256-bit modular multiply-add: result = (a*b + c) mod m — 128 bytes, result in first 32
+/// 256-bit modular multiply-add: result = (a*b + c) mod m — 128 bytes, result in first 32.
+/// Buffer layout (caller): [a(32)|b(32)|c(32)|m(32)]; result written back to first 32 bytes.
+/// CSR 0x802 uses indirect_params=5: expects a pointer to [*a, *b, *c, *m, *out];
+/// each sub-pointer addresses 32 bytes (4 u64 limbs); rewrite_params=false so result
+/// goes to *out (a separate buffer), which we copy back to input[0..32].
 pub fn arith256Mod(input: *[128]u8) void {
-    const ptr = @intFromPtr(input);
-    asm volatile ("csrs 0x802, %[ptr]" : : [ptr] "r" (ptr) : .{ .memory = true });
+    var out: [32]u8 align(8) = undefined;
+    var ptrs: [5]u64 align(8) = .{
+        @intFromPtr(&input[0]),
+        @intFromPtr(&input[32]),
+        @intFromPtr(&input[64]),
+        @intFromPtr(&input[96]),
+        @intFromPtr(&out),
+    };
+    asm volatile ("csrs 0x802, %[ptr]" : : [ptr] "r" (@intFromPtr(&ptrs)) : .{ .memory = true });
+    @memcpy(input[0..32], &out);
 }
 
 /// 384-bit modular operations — 192 bytes, result in first 48
