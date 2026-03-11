@@ -23,8 +23,8 @@ pub fn keccak256(data: []const u8) [32]u8 {
     // ── Absorb final partial block + Keccak padding ───────────────────────────
     const tail = data.len - offset;
     for (0..tail) |i| state[i] ^= data[offset + i];
-    state[tail]      ^= 0x01;   // Keccak domain separation (0x01, not SHA3 0x06)
-    state[RATE - 1]  ^= 0x80;   // final padding bit
+    state[tail] ^= 0x01; // Keccak domain separation (0x01, not SHA3 0x06)
+    state[RATE - 1] ^= 0x80; // final padding bit
     zisk.keccakf(&state);
 
     // ── Squeeze 32 bytes ──────────────────────────────────────────────────────

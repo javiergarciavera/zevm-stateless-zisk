@@ -11,10 +11,10 @@
 //! Block parsing delegates to rlp_decode (decodeBlockHeader, decodeTxList,
 //! decodeWithdrawals, findPreStateRoot) rather than re-implementing field-by-field.
 
-const std        = @import("std");
-const input_mod  = @import("input");
+const std = @import("std");
+const input_mod = @import("input");
 const primitives = @import("primitives");
-const mpt        = @import("mpt");
+const mpt = @import("mpt");
 const rlp_decode = @import("rlp_decode");
 
 /// Deserialize a StatelessInput from a raw byte slice (zevm-zisk binary format).
@@ -32,14 +32,14 @@ pub fn fromBytes(allocator: std.mem.Allocator, data: []const u8) !input_mod.Stat
     // Block structure: RLP([header_list, txs_list, ommers_list, withdrawals_list?])
     const outer_r = mpt.rlp.decodeItem(block_rlp) catch return error.InvalidBlock;
     const block_payload = switch (outer_r.item) {
-        .list  => |p| p,
+        .list => |p| p,
         .bytes => return error.InvalidBlock,
     };
 
     // Decode header
     const hdr_r = mpt.rlp.decodeItem(block_payload) catch return error.InvalidBlock;
     const hdr_payload = switch (hdr_r.item) {
-        .list  => |p| p,
+        .list => |p| p,
         .bytes => return error.InvalidBlock,
     };
     const header = try rlp_decode.decodeBlockHeader(allocator, hdr_payload);
@@ -48,7 +48,7 @@ pub fn fromBytes(allocator: std.mem.Allocator, data: []const u8) !input_mod.Stat
     const after_hdr = block_payload[hdr_r.consumed..];
     const txns_r = mpt.rlp.decodeItem(after_hdr) catch return error.InvalidBlock;
     const txns_payload = switch (txns_r.item) {
-        .list  => |p| p,
+        .list => |p| p,
         .bytes => return error.InvalidBlock,
     };
     const transactions = try rlp_decode.decodeTxList(allocator, txns_payload);
@@ -61,7 +61,10 @@ pub fn fromBytes(allocator: std.mem.Allocator, data: []const u8) !input_mod.Stat
             const after_ommers = after_txns[ommers_r.consumed..];
             if (after_ommers.len > 0) {
                 if (mpt.rlp.decodeItem(after_ommers)) |wd_r| {
-                    const wd_payload = switch (wd_r.item) { .list => |p| p, .bytes => &.{} };
+                    const wd_payload = switch (wd_r.item) {
+                        .list => |p| p,
+                        .bytes => &.{},
+                    };
                     withdrawals = rlp_decode.decodeWithdrawals(allocator, wd_payload) catch &.{};
                 } else |_| {}
             }
@@ -69,26 +72,25 @@ pub fn fromBytes(allocator: std.mem.Allocator, data: []const u8) !input_mod.Stat
     }
 
     // ── ExecutionWitness ──────────────────────────────────────────────────────
-    const nodes   = try readSliceArray(allocator, data, &pos);
-    const codes   = try readSliceArray(allocator, data, &pos);
-    const keys    = try readSliceArray(allocator, data, &pos);
+    const nodes = try readSliceArray(allocator, data, &pos);
+    const codes = try readSliceArray(allocator, data, &pos);
+    const keys = try readSliceArray(allocator, data, &pos);
     const headers = try readSliceArray(allocator, data, &pos);
 
     var witness = input_mod.StateWitness{
         .state_root = @splat(0),
-        .nodes      = nodes,
-        .codes      = codes,
-        .keys       = keys,
-        .headers    = headers,
+        .nodes = nodes,
+        .codes = codes,
+        .keys = keys,
+        .headers = headers,
     };
-    witness.state_root = rlp_decode.findPreStateRoot(witness.headers, header.number)
-                         orelse header.state_root;
+    witness.state_root = rlp_decode.findPreStateRoot(witness.headers, header.number) orelse header.state_root;
 
     return input_mod.StatelessInput{
-        .block        = header,
+        .block = header,
         .transactions = transactions,
-        .witness      = witness,
-        .withdrawals  = withdrawals,
+        .witness = witness,
+        .withdrawals = withdrawals,
     };
 }
 

@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    name: Lint, Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      # Check out all three repos as siblings so the path dependencies resolve:
+      #   $GITHUB_WORKSPACE/zevm-stateless-zisk  ← this repo
+      #   $GITHUB_WORKSPACE/zevm                 ← ../zevm
+      #   $GITHUB_WORKSPACE/zevm-stateless        ← ../zevm-stateless
+      - name: Checkout zevm-stateless-zisk
+        uses: actions/checkout@v4
+        with:
+          path: zevm-stateless-zisk
+
+      - name: Checkout zevm
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/zevm
+          path: zevm
+
+      - name: Checkout zevm-stateless
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/zevm-stateless
+          path: zevm-stateless
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: "0.15.2"
+
+      - name: Lint
+        working-directory: zevm-stateless-zisk
+        run: zig fmt --check src/ build.zig
+
+      - name: Build (Debug)
+        working-directory: zevm-stateless-zisk
+        run: zig build
+
+      - name: Build (ReleaseFast)
+        working-directory: zevm-stateless-zisk
+        run: zig build -Doptimize=ReleaseFast
+
+      - name: Test
+        working-directory: zevm-stateless-zisk
+        run: zig build test --summary all

@@ -12,14 +12,15 @@
 ///   ✓ Miller loop with 63-bit ate parameter (x = 4965661367192848881)
 ///   ⚠ Final exponentiation is a placeholder (single square)
 ///   TODO: implement full final exponentiation for EIP-197 compliance
-
-const std      = @import("std");
+const std = @import("std");
 const circuits = @import("zisk_circuits.zig");
 
 pub const Fp2 = struct {
     data: [64]u8 align(8), // [c0: 32 bytes | c1: 32 bytes] little-endian limbs
 
-    pub fn zero() Fp2 { return .{ .data = [_]u8{0} ** 64 }; }
+    pub fn zero() Fp2 {
+        return .{ .data = [_]u8{0} ** 64 };
+    }
 
     pub fn one() Fp2 {
         var r = Fp2.zero();
@@ -29,7 +30,7 @@ pub const Fp2 = struct {
 
     pub fn add(self: *const Fp2, other: *const Fp2) Fp2 {
         var input: [128]u8 align(8) = undefined;
-        @memcpy(input[0..64],   &self.data);
+        @memcpy(input[0..64], &self.data);
         @memcpy(input[64..128], &other.data);
         circuits.bn254ComplexAdd(&input);
         var r: Fp2 = undefined;
@@ -39,7 +40,7 @@ pub const Fp2 = struct {
 
     pub fn sub(self: *const Fp2, other: *const Fp2) Fp2 {
         var input: [128]u8 align(8) = undefined;
-        @memcpy(input[0..64],   &self.data);
+        @memcpy(input[0..64], &self.data);
         @memcpy(input[64..128], &other.data);
         circuits.bn254ComplexSub(&input);
         var r: Fp2 = undefined;
@@ -49,7 +50,7 @@ pub const Fp2 = struct {
 
     pub fn mul(self: *const Fp2, other: *const Fp2) Fp2 {
         var input: [128]u8 align(8) = undefined;
-        @memcpy(input[0..64],   &self.data);
+        @memcpy(input[0..64], &self.data);
         @memcpy(input[64..128], &other.data);
         circuits.bn254ComplexMul(&input);
         var r: Fp2 = undefined;
@@ -57,7 +58,9 @@ pub const Fp2 = struct {
         return r;
     }
 
-    pub fn square(self: *const Fp2) Fp2 { return self.mul(self); }
+    pub fn square(self: *const Fp2) Fp2 {
+        return self.mul(self);
+    }
 
     pub fn isZero(self: *const Fp2) bool {
         for (self.data) |b| if (b != 0) return false;
@@ -68,7 +71,9 @@ pub const Fp2 = struct {
         return Fp2.zero().sub(self);
     }
 
-    pub fn double(self: *const Fp2) Fp2 { return self.add(self); }
+    pub fn double(self: *const Fp2) Fp2 {
+        return self.add(self);
+    }
 
     pub fn inverse(self: *const Fp2) Fp2 {
         var c0 = Fp2.zero();
@@ -76,8 +81,8 @@ pub const Fp2 = struct {
         @memcpy(c0.data[0..32], self.data[0..32]);
         @memcpy(c1.data[0..32], self.data[32..64]);
 
-        const a2   = c0.mul(&c0);
-        const b2   = c1.mul(&c1);
+        const a2 = c0.mul(&c0);
+        const b2 = c1.mul(&c1);
         const norm = a2.add(&b2);
         const norm_inv = inverseFp(&norm);
 
@@ -101,7 +106,7 @@ pub const Fp2 = struct {
         };
 
         var result = Fp2.one();
-        var base   = a.*;
+        var base = a.*;
         var limb_idx: usize = 4;
         while (limb_idx > 0) {
             limb_idx -= 1;
@@ -131,21 +136,26 @@ pub const G2Point = struct {
     x: Fp2,
     y: Fp2,
 
-    pub fn infinity() G2Point { return .{ .x = Fp2.zero(), .y = Fp2.zero() }; }
-    pub fn isInfinity(self: *const G2Point) bool { return self.x.isZero() and self.y.isZero(); }
+    pub fn infinity() G2Point {
+        return .{ .x = Fp2.zero(), .y = Fp2.zero() };
+    }
+    pub fn isInfinity(self: *const G2Point) bool {
+        return self.x.isZero() and self.y.isZero();
+    }
 
     pub fn double(self: *const G2Point) G2Point {
         if (self.isInfinity()) return G2Point.infinity();
-        const x2     = self.x.square();
-        var three    = Fp2.zero(); three.data[0] = 3;
-        const num    = three.mul(&x2);
-        const den    = self.y.double();
-        const lam    = num.div(&den);
-        const lam2   = lam.square();
-        const two_x  = self.x.double();
-        const x_new  = lam2.sub(&two_x);
+        const x2 = self.x.square();
+        var three = Fp2.zero();
+        three.data[0] = 3;
+        const num = three.mul(&x2);
+        const den = self.y.double();
+        const lam = num.div(&den);
+        const lam2 = lam.square();
+        const two_x = self.x.double();
+        const x_new = lam2.sub(&two_x);
         const x_diff = self.x.sub(&x_new);
-        const y_new  = lam.mul(&x_diff).sub(&self.y);
+        const y_new = lam.mul(&x_diff).sub(&self.y);
         return .{ .x = x_new, .y = y_new };
     }
 
@@ -156,22 +166,28 @@ pub const G2Point = struct {
         const ye = std.mem.eql(u8, &self.y.data, &other.y.data);
         if (xe and ye) return self.double();
         if (xe and !ye) return G2Point.infinity();
-        const dy   = other.y.sub(&self.y);
-        const dx   = other.x.sub(&self.x);
-        const lam  = dy.div(&dx);
+        const dy = other.y.sub(&self.y);
+        const dx = other.x.sub(&self.x);
+        const lam = dy.div(&dx);
         const lam2 = lam.square();
         const x_new = lam2.sub(&self.x).sub(&other.x);
         const x_diff = self.x.sub(&x_new);
-        const y_new  = lam.mul(&x_diff).sub(&self.y);
+        const y_new = lam.mul(&x_diff).sub(&self.y);
         return .{ .x = x_new, .y = y_new };
     }
 };
 
 pub const Fp6 = struct {
-    c0: Fp2, c1: Fp2, c2: Fp2,
+    c0: Fp2,
+    c1: Fp2,
+    c2: Fp2,
 
-    pub fn zero() Fp6 { return .{ .c0 = Fp2.zero(), .c1 = Fp2.zero(), .c2 = Fp2.zero() }; }
-    pub fn one()  Fp6 { return .{ .c0 = Fp2.one(),  .c1 = Fp2.zero(), .c2 = Fp2.zero() }; }
+    pub fn zero() Fp6 {
+        return .{ .c0 = Fp2.zero(), .c1 = Fp2.zero(), .c2 = Fp2.zero() };
+    }
+    pub fn one() Fp6 {
+        return .{ .c0 = Fp2.one(), .c1 = Fp2.zero(), .c2 = Fp2.zero() };
+    }
 
     pub fn add(self: *const Fp6, other: *const Fp6) Fp6 {
         return .{ .c0 = self.c0.add(&other.c0), .c1 = self.c1.add(&other.c1), .c2 = self.c2.add(&other.c2) };
@@ -182,7 +198,8 @@ pub const Fp6 = struct {
     }
 
     pub fn mulByNonResidue(a: *const Fp2) Fp2 {
-        var nine = Fp2.zero(); nine.data[0] = 9;
+        var nine = Fp2.zero();
+        nine.data[0] = 9;
         return a.mul(&nine);
     }
 
@@ -198,19 +215,26 @@ pub const Fp6 = struct {
         return .{ .c0 = c0, .c1 = c1, .c2 = c2 };
     }
 
-    pub fn square(self: *const Fp6) Fp6 { return self.mul(self); }
+    pub fn square(self: *const Fp6) Fp6 {
+        return self.mul(self);
+    }
 };
 
 pub const Fp12 = struct {
-    c0: Fp6, c1: Fp6,
+    c0: Fp6,
+    c1: Fp6,
 
-    pub fn zero() Fp12 { return .{ .c0 = Fp6.zero(), .c1 = Fp6.zero() }; }
-    pub fn one()  Fp12 { return .{ .c0 = Fp6.one(),  .c1 = Fp6.zero() }; }
+    pub fn zero() Fp12 {
+        return .{ .c0 = Fp6.zero(), .c1 = Fp6.zero() };
+    }
+    pub fn one() Fp12 {
+        return .{ .c0 = Fp6.one(), .c1 = Fp6.zero() };
+    }
 
     pub fn mul(self: *const Fp12, other: *const Fp12) Fp12 {
-        const v0  = self.c0.mul(&other.c0);
-        const v1  = self.c1.mul(&other.c1);
-        const c1  = self.c0.add(&self.c1).mul(&other.c0.add(&other.c1)).sub(&v0).sub(&v1);
+        const v0 = self.c0.mul(&other.c0);
+        const v1 = self.c1.mul(&other.c1);
+        const c1 = self.c0.add(&self.c1).mul(&other.c0.add(&other.c1)).sub(&v0).sub(&v1);
         const v1_nr = Fp6{
             .c0 = Fp6.mulByNonResidue(&v1.c2),
             .c1 = v1.c0,
@@ -219,12 +243,14 @@ pub const Fp12 = struct {
         return .{ .c0 = v0.add(&v1_nr), .c1 = c1 };
     }
 
-    pub fn square(self: *const Fp12) Fp12 { return self.mul(self); }
+    pub fn square(self: *const Fp12) Fp12 {
+        return self.mul(self);
+    }
 
     pub fn isOne(self: *const Fp12) bool {
         const one_val = Fp12.one();
         return std.mem.eql(u8, std.mem.asBytes(&self.c0), std.mem.asBytes(&one_val.c0)) and
-               std.mem.eql(u8, std.mem.asBytes(&self.c1), std.mem.asBytes(&one_val.c1));
+            std.mem.eql(u8, std.mem.asBytes(&self.c1), std.mem.asBytes(&one_val.c1));
     }
 };
 
@@ -238,24 +264,29 @@ pub const G1Point = struct {
 };
 
 fn lineDouble(t: *const G2Point, p: *const G1Point) Fp12 {
-    var p_x = Fp2.zero(); @memcpy(p_x.data[0..32], p.data[0..32]);
-    var p_y = Fp2.zero(); @memcpy(p_y.data[0..32], p.data[32..64]);
-    const x2  = t.x.square();
-    var three = Fp2.zero(); three.data[0] = 3;
+    var p_x = Fp2.zero();
+    @memcpy(p_x.data[0..32], p.data[0..32]);
+    var p_y = Fp2.zero();
+    @memcpy(p_y.data[0..32], p.data[32..64]);
+    const x2 = t.x.square();
+    var three = Fp2.zero();
+    three.data[0] = 3;
     const num = three.mul(&x2);
     const den = t.y.double();
     const lam = num.div(&den);
-    const r   = lam.mul(&t.x.sub(&p_x)).add(&p_y.sub(&t.y));
+    const r = lam.mul(&t.x.sub(&p_x)).add(&p_y.sub(&t.y));
     return Fp12{ .c0 = Fp6{ .c0 = r, .c1 = Fp2.zero(), .c2 = Fp2.zero() }, .c1 = Fp6.zero() };
 }
 
 fn lineAdd(t: *const G2Point, q: *const G2Point, p: *const G1Point) Fp12 {
-    var p_x = Fp2.zero(); @memcpy(p_x.data[0..32], p.data[0..32]);
-    var p_y = Fp2.zero(); @memcpy(p_y.data[0..32], p.data[32..64]);
-    const dy  = q.y.sub(&t.y);
-    const dx  = q.x.sub(&t.x);
+    var p_x = Fp2.zero();
+    @memcpy(p_x.data[0..32], p.data[0..32]);
+    var p_y = Fp2.zero();
+    @memcpy(p_y.data[0..32], p.data[32..64]);
+    const dy = q.y.sub(&t.y);
+    const dx = q.x.sub(&t.x);
     const lam = dy.div(&dx);
-    const r   = lam.mul(&t.x.sub(&p_x)).add(&p_y.sub(&t.y));
+    const r = lam.mul(&t.x.sub(&p_x)).add(&p_y.sub(&t.y));
     return Fp12{ .c0 = Fp6{ .c0 = r, .c1 = Fp2.zero(), .c2 = Fp2.zero() }, .c1 = Fp6.zero() };
 }
 

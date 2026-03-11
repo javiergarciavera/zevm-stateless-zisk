@@ -12,7 +12,6 @@
 /// Injected into zevm's precompile module via:
 ///   precompile_module.addImport("precompile_implementations", zisk_impls_module)
 /// in zevm-stateless-zisk/build.zig.
-
 const T = @import("precompile_types");
 const alloc_mod = @import("zevm_allocator");
 // Access eip196 through the 'zisk' named module so that eip196.zig (and its
@@ -156,27 +155,27 @@ fn p256verifyStub(_: []const u8, _: u64) T.PrecompileResult {
 pub const ecrecover: T.PrecompileFn = ecrecoverStub;
 
 // Byzantium
-pub const bn254_add_byzantium:     T.PrecompileFn = bn254AddByzantium;
-pub const bn254_mul_byzantium:     T.PrecompileFn = bn254MulByzantium;
+pub const bn254_add_byzantium: T.PrecompileFn = bn254AddByzantium;
+pub const bn254_mul_byzantium: T.PrecompileFn = bn254MulByzantium;
 pub const bn254_pairing_byzantium: T.PrecompileFn = bn254PairingByzantium;
 
 // Istanbul
-pub const bn254_add_istanbul:     T.PrecompileFn = bn254AddIstanbul;
-pub const bn254_mul_istanbul:     T.PrecompileFn = bn254MulIstanbul;
+pub const bn254_add_istanbul: T.PrecompileFn = bn254AddIstanbul;
+pub const bn254_mul_istanbul: T.PrecompileFn = bn254MulIstanbul;
 pub const bn254_pairing_istanbul: T.PrecompileFn = bn254PairingIstanbul;
 
 // Cancun
 pub const kzg_point_evaluation: T.PrecompileFn = kzgStub;
 
 // Prague / BLS12-381
-pub const bls12_g1_add:        T.PrecompileFn = bls12Stub;
-pub const bls12_g1_msm:        T.PrecompileFn = bls12Stub;
-pub const bls12_g2_add:        T.PrecompileFn = bls12Stub;
-pub const bls12_g2_msm:        T.PrecompileFn = bls12Stub;
-pub const bls12_pairing:       T.PrecompileFn = bls12Stub;
-pub const bls12_map_fp_to_g1:  T.PrecompileFn = bls12Stub;
+pub const bls12_g1_add: T.PrecompileFn = bls12Stub;
+pub const bls12_g1_msm: T.PrecompileFn = bls12Stub;
+pub const bls12_g2_add: T.PrecompileFn = bls12Stub;
+pub const bls12_g2_msm: T.PrecompileFn = bls12Stub;
+pub const bls12_pairing: T.PrecompileFn = bls12Stub;
+pub const bls12_map_fp_to_g1: T.PrecompileFn = bls12Stub;
 pub const bls12_map_fp2_to_g2: T.PrecompileFn = bls12Stub;
 
 // Osaka
-pub const p256verify:       T.PrecompileFn = p256verifyStub;
+pub const p256verify: T.PrecompileFn = p256verifyStub;
 pub const p256verify_osaka: T.PrecompileFn = p256verifyStub;

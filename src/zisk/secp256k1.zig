@@ -10,7 +10,7 @@
 //! Each coordinate is a 256-bit integer in little-endian byte order.
 //! Field/scalar elements (Fe) use the same LE 32-byte representation.
 
-const std  = @import("std");
+const std = @import("std");
 const zisk = @import("zisk");
 
 // ── secp256k1 constants (little-endian 256-bit integers) ──────────────────────
@@ -73,7 +73,7 @@ const P_SQRT_EXP_BE: [32]u8 = .{
 };
 
 const ZERO: Fe = .{0} ** 32;
-const ONE:  Fe = .{1} ++ (.{0} ** 31);
+const ONE: Fe = .{1} ++ (.{0} ** 31);
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -103,9 +103,9 @@ fn leToBe(le: *const Fe) [32]u8 {
 /// (a * b + c) mod m — all operands are 32-byte LE integers.
 fn modMulAdd(a: *const Fe, b: *const Fe, c: *const Fe, m: *const Fe) Fe {
     var buf: [128]u8 align(8) = undefined;
-    @memcpy(buf[0..32],   a);
-    @memcpy(buf[32..64],  b);
-    @memcpy(buf[64..96],  c);
+    @memcpy(buf[0..32], a);
+    @memcpy(buf[32..64], b);
+    @memcpy(buf[64..96], c);
     @memcpy(buf[96..128], m);
     zisk.arith256Mod(&buf);
     var result: Fe = undefined;
@@ -162,13 +162,19 @@ fn fePow(base: *const Fe, exp_be: [32]u8, m: *const Fe) Fe {
 }
 
 /// Multiplicative inverse in Fp: a^(p−2) mod p
-fn feInvP(a: *const Fe) Fe { return fePow(a, P_MINUS_2_BE, &P_LE); }
+fn feInvP(a: *const Fe) Fe {
+    return fePow(a, P_MINUS_2_BE, &P_LE);
+}
 
 /// Multiplicative inverse in Fn: a^(n−2) mod n
-fn feInvN(a: *const Fe) Fe { return fePow(a, N_MINUS_2_BE, &N_LE); }
+fn feInvN(a: *const Fe) Fe {
+    return fePow(a, N_MINUS_2_BE, &N_LE);
+}
 
 /// Square root in Fp: a^((p+1)/4) mod p  (secp256k1: p ≡ 3 mod 4)
-fn feSqrtP(a: *const Fe) Fe { return fePow(a, P_SQRT_EXP_BE, &P_LE); }
+fn feSqrtP(a: *const Fe) Fe {
+    return fePow(a, P_SQRT_EXP_BE, &P_LE);
+}
 
 // ── Point operations (via secp256k1Add / secp256k1Double CSRs) ─────────────────
 
@@ -179,7 +185,7 @@ fn pointIsInfinity(buf: *const [64]u8) bool {
 
 fn pointToBytes(p: *const Point) [64]u8 {
     var buf: [64]u8 align(8) = undefined;
-    @memcpy(buf[0..32],  &p.x);
+    @memcpy(buf[0..32], &p.x);
     @memcpy(buf[32..64], &p.y);
     return buf;
 }
@@ -210,7 +216,7 @@ fn pointAdd(p1: Point, p2: Point) ?Point {
         return null; // P + (−P) = O
     }
     var buf: [128]u8 align(8) = undefined;
-    @memcpy(buf[0..64],   b1[0..]);
+    @memcpy(buf[0..64], b1[0..]);
     @memcpy(buf[64..128], b2[0..]);
     zisk.secp256k1Add(&buf);
     return bytesToPoint(buf[0..64]);
@@ -230,7 +236,7 @@ fn scalarMul(k: *const Fe, p: Point) ?Point {
     var result: ?Point = null;
     var cur: ?Point = p;
     for (0..256) |i| {
-        const byte_idx = i / 8;         // LSB-first traversal (LE scalar)
+        const byte_idx = i / 8; // LSB-first traversal (LE scalar)
         const bit_idx: u3 = @intCast(i % 8);
         if ((k[byte_idx] >> bit_idx) & 1 == 1) {
             result = optAdd(result, cur);
@@ -247,7 +253,7 @@ fn scalarMul(k: *const Fe, p: Point) ?Point {
 fn keccak256_64(data: *const [64]u8) [32]u8 {
     var state: [200]u8 = .{0} ** 200;
     @memcpy(state[0..64], data);
-    state[64]  ^= 0x01; // keccak domain padding
+    state[64] ^= 0x01; // keccak domain padding
     state[135] ^= 0x80; // end-of-rate marker
     zisk.keccakf(&state);
     return state[0..32].*;
@@ -277,10 +283,10 @@ fn doEcrecover(msg_hash: [32]u8, sig: [64]u8, recid: u8) ?[20]u8 {
     }
 
     // y² = x³ + 7 mod p
-    const x2  = feMul(&rx, &rx, &P_LE);
-    const x3  = feMul(&x2, &rx, &P_LE);
+    const x2 = feMul(&rx, &rx, &P_LE);
+    const x3 = feMul(&x2, &rx, &P_LE);
     const seven: Fe = .{7} ++ (.{0} ** 31);
-    const y2  = feAdd(&x3, &seven, &P_LE);
+    const y2 = feAdd(&x3, &seven, &P_LE);
     var y = feSqrtP(&y2);
 
     // Validate: y² must equal y²  (rx may not be a valid x-coordinate)
@@ -294,17 +300,17 @@ fn doEcrecover(msg_hash: [32]u8, sig: [64]u8, recid: u8) ?[20]u8 {
 
     // k1 = −z · r⁻¹ mod n,   k2 = s · r⁻¹ mod n
     const r_inv = feInvN(&r_le);
-    const k1    = feMul(&feNeg(&z_le, &N_LE), &r_inv, &N_LE);
-    const k2    = feMul(&s_le, &r_inv, &N_LE);
+    const k1 = feMul(&feNeg(&z_le, &N_LE), &r_inv, &N_LE);
+    const k2 = feMul(&s_le, &r_inv, &N_LE);
 
     // Q = k1·G + k2·R
     const u1G = scalarMul(&k1, G) orelse return null;
     const u2R = scalarMul(&k2, R) orelse return null;
-    const Q   = optAdd(u1G, u2R)  orelse return null;
+    const Q = optAdd(u1G, u2R) orelse return null;
 
     // Ethereum address = keccak256(Qx_BE ‖ Qy_BE)[12..32]
     var pubkey: [64]u8 = undefined;
-    @memcpy(pubkey[0..32],  &leToBe(&Q.x));
+    @memcpy(pubkey[0..32], &leToBe(&Q.x));
     @memcpy(pubkey[32..64], &leToBe(&Q.y));
     const h = keccak256_64(&pubkey);
     return h[12..32].*;

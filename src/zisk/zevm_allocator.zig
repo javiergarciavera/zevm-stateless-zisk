@@ -4,7 +4,6 @@
 /// with the Zisk bump allocator.  Injected via:
 ///   module.addImport("zevm_allocator", zisk_allocator_module)
 /// in zevm-stateless-zisk/build.zig.
-
 const std = @import("std");
 // Import via the named 'zisk' module so that allocator.zig stays in a single
 // module (the 'zisk' module), avoiding the "file exists in multiple modules" error.
@@ -15,4 +14,3 @@ var instance = zisk.ZiskAllocator.init();
 pub fn get() std.mem.Allocator {
     return instance.allocator();
 }
-

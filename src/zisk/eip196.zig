@@ -2,8 +2,7 @@
 ///
 /// Provides high-level functions that handle big-endian EIP format conversions
 /// and dispatch to the Zisk hardware circuits via zisk_circuits.zig.
-
-const std      = @import("std");
+const std = @import("std");
 const circuits = @import("zisk_circuits.zig");
 
 fn scalarToLimbs(scalar_be: *const [32]u8) [4]u64 {
@@ -37,10 +36,10 @@ pub fn ecAdd(p1_be: *const [64]u8, p2_be: *const [64]u8, result_be: *[64]u8) voi
     var p2: [64]u8 align(8) = undefined;
 
     for (0..4) |i| {
-        std.mem.writeInt(u64, p1[i * 8 ..][0..8],       scalarToLimbs(p1_be[0..32])[i],  .little);
-        std.mem.writeInt(u64, p1[32 + i * 8 ..][0..8],  scalarToLimbs(p1_be[32..64])[i], .little);
-        std.mem.writeInt(u64, p2[i * 8 ..][0..8],       scalarToLimbs(p2_be[0..32])[i],  .little);
-        std.mem.writeInt(u64, p2[32 + i * 8 ..][0..8],  scalarToLimbs(p2_be[32..64])[i], .little);
+        std.mem.writeInt(u64, p1[i * 8 ..][0..8], scalarToLimbs(p1_be[0..32])[i], .little);
+        std.mem.writeInt(u64, p1[32 + i * 8 ..][0..8], scalarToLimbs(p1_be[32..64])[i], .little);
+        std.mem.writeInt(u64, p2[i * 8 ..][0..8], scalarToLimbs(p2_be[0..32])[i], .little);
+        std.mem.writeInt(u64, p2[32 + i * 8 ..][0..8], scalarToLimbs(p2_be[32..64])[i], .little);
     }
 
     if (isInfinity(&p1)) {
@@ -66,8 +65,8 @@ pub fn ecAdd(p1_be: *const [64]u8, p2_be: *const [64]u8, result_be: *[64]u8) voi
     var rx: [4]u64 = undefined;
     var ry: [4]u64 = undefined;
     for (0..4) |i| {
-        rx[i] = std.mem.readInt(u64, p1[i * 8 ..][0..8],       .little);
-        ry[i] = std.mem.readInt(u64, p1[32 + i * 8 ..][0..8],  .little);
+        rx[i] = std.mem.readInt(u64, p1[i * 8 ..][0..8], .little);
+        ry[i] = std.mem.readInt(u64, p1[32 + i * 8 ..][0..8], .little);
     }
     limbsToCoordinate(rx, result_be[0..32]);
     limbsToCoordinate(ry, result_be[32..64]);
@@ -79,7 +78,7 @@ pub fn ecMul(point_be: *const [64]u8, scalar_be: *const [32]u8, result_be: *[64]
 
     var point: [64]u8 align(8) = undefined;
     for (0..4) |i| {
-        std.mem.writeInt(u64, point[i * 8 ..][0..8],      scalarToLimbs(point_be[0..32])[i],  .little);
+        std.mem.writeInt(u64, point[i * 8 ..][0..8], scalarToLimbs(point_be[0..32])[i], .little);
         std.mem.writeInt(u64, point[32 + i * 8 ..][0..8], scalarToLimbs(point_be[32..64])[i], .little);
     }
 
@@ -104,8 +103,8 @@ pub fn ecMul(point_be: *const [64]u8, scalar_be: *const [32]u8, result_be: *[64]
         var p_orig: [64]u8 = undefined;
         @memcpy(&p_orig, &point);
 
-        var limb_idx:        usize = max_limb;
-        var first_iteration: bool  = true;
+        var limb_idx: usize = max_limb;
+        var first_iteration: bool = true;
         while (true) {
             const start_bit: usize = if (limb_idx == max_limb) max_bit else 63;
             var bit_idx: usize = start_bit;
@@ -135,7 +134,7 @@ pub fn ecMul(point_be: *const [64]u8, scalar_be: *const [32]u8, result_be: *[64]
     var rx: [4]u64 = undefined;
     var ry: [4]u64 = undefined;
     for (0..4) |i| {
-        rx[i] = std.mem.readInt(u64, point[i * 8 ..][0..8],      .little);
+        rx[i] = std.mem.readInt(u64, point[i * 8 ..][0..8], .little);
         ry[i] = std.mem.readInt(u64, point[32 + i * 8 ..][0..8], .little);
     }
     limbsToCoordinate(rx, result_be[0..32]);
@@ -147,7 +146,10 @@ pub fn ecPairing(input: []const u8, result: *[32]u8, allocator: std.mem.Allocato
     if (input.len % 192 != 0) return error.InvalidInputLength;
     const num_pairs = input.len / 192;
     @memset(result, 0);
-    if (num_pairs == 0) { result[31] = 1; return; }
+    if (num_pairs == 0) {
+        result[31] = 1;
+        return;
+    }
 
     const circuit_input = try allocator.alloc(u8, input.len);
     defer allocator.free(circuit_input);
@@ -155,15 +157,15 @@ pub fn ecPairing(input: []const u8, result: *[32]u8, allocator: std.mem.Allocato
     for (0..num_pairs) |i| {
         const off = i * 192;
         const g1_xl = scalarToLimbs(input[off..][0..32]);
-        const g1_yl = scalarToLimbs(input[off + 32..][0..32]);
+        const g1_yl = scalarToLimbs(input[off + 32 ..][0..32]);
         for (0..4) |j| {
-            std.mem.writeInt(u64, circuit_input[off + j * 8..][0..8],       g1_xl[j], .little);
-            std.mem.writeInt(u64, circuit_input[off + 32 + j * 8..][0..8],  g1_yl[j], .little);
+            std.mem.writeInt(u64, circuit_input[off + j * 8 ..][0..8], g1_xl[j], .little);
+            std.mem.writeInt(u64, circuit_input[off + 32 + j * 8 ..][0..8], g1_yl[j], .little);
         }
         for ([_]usize{ 64, 96, 128, 160 }, 0..) |src_off, k| {
-            const lx = scalarToLimbs(input[off + src_off..][0..32]);
+            const lx = scalarToLimbs(input[off + src_off ..][0..32]);
             for (0..4) |j| {
-                std.mem.writeInt(u64, circuit_input[off + src_off + j * 8..][0..8], lx[j], .little);
+                std.mem.writeInt(u64, circuit_input[off + src_off + j * 8 ..][0..8], lx[j], .little);
             }
             _ = k;
         }
