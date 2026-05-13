@@ -17,24 +17,24 @@ jobs:
       #   $GITHUB_WORKSPACE/zevm                 ← ../zevm
       #   $GITHUB_WORKSPACE/zevm-stateless        ← ../zevm-stateless
       - name: Checkout zevm-stateless-zisk
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           path: zevm-stateless-zisk
 
       - name: Checkout zevm
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           repository: ${{ github.repository_owner }}/zevm
           path: zevm
 
       - name: Checkout zevm-stateless
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           repository: ${{ github.repository_owner }}/zevm-stateless
           path: zevm-stateless
 
       - name: Install Zig
-        uses: mlugg/setup-zig@v2
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
         with:
           version: "0.15.2"
 
