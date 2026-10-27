@@ -12,6 +12,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Wiz sensor
+        uses: Consensys/github-actions/wiz-sensor@c529b19afef5a8e2ff6993638a99a905de633ddb
+        with:
+          enabled: ${{ vars.WIZ_SENSOR_ENABLED }}
+          token: ${{ secrets.WIZ_SENSOR_TOKEN }}
       # Check out all three repos as siblings so the path dependencies resolve:
       #   $GITHUB_WORKSPACE/zevm-stateless-zisk  ← this repo
       #   $GITHUB_WORKSPACE/zevm                 ← ../zevm
